@@ -2,26 +2,59 @@ import numpy as np
 import random
 import scipy.spatial
 
+# number of total decisions to make (length of run)
 NUM_DECISIONS = 100000
-NUM_WALKERS = 5
+
+# number of walkers to use (how many threads of thinking)
+NUM_WALKERS = 10
+
+# number of virtual actions each walker takes during a single decision
 TIME_HORIZON = 100
+
+# explore/exploit balance  - 0: explore 1: balanced 2: exploit
 R_POW = 1
 
 # evolve walkers given their states, return delta_states for all walkers
+# delta_state constraints are applied here
 def evolve(wStates):
-    # randomly choose -1, 0, or 1 as delta
-    delta = [[random.randint(-1,1) for n in range(len(s))] for s in wStates]
-    #print('Delta: ', delta)
-    return delta
+
+    # discrete evolution options (discrete actions)
+    # this shows only the first variable able to adjust by one positive or negative, second variable always increases by 1
+    num_actions = 2
+    delta_states = []
+    for idx, state in enumerate(wStates):
+        r = random.randint(0, num_actions)
+        if r == 0:
+            delta_states.insert(idx, [0, 1])
+        elif r == 1:
+            delta_states.insert(idx, [10, 1])
+        elif r == 2:
+            delta_states.insert(idx, [-10, 1])
+        else:
+            delta_states.insert(idx, [0, 1])
+
+    #print('Delta: ', delta_states)
+    return delta_states
+
+    # continuous evolution options, constrained by continuous functions
+    # this shows
+    evo_scale = 100
+    #for idx, state in enumerate(wStates):
+
+
+
 # given a state, return the reward
 def reward(state):
-    # reward is given by maximizing first state value
-    #return abs(state[1] - state[0])
-    #return -state[1]
-    if (state[0] == 25):
-        return 1
+    if (state[0] == state[1]):
+        return state[0]
+    elif (state[0] < state[1]):
+        return (state[0] - state[1])
     else:
-        return 0
+        return (state[1] - state[0])
+
+# visualize the step count and the state
+def visualize(step, state, reward):
+    print('Step: ' + str(step) + ' State: ' + str(state) + ' Mean Reward: ' + str(reward))
 
 def start():
     # state space
@@ -34,14 +67,22 @@ def start():
     # max number of decisions to make
     num_decisions = NUM_DECISIONS
     
+    # track reward
+    curr_reward = reward(state)
+    k = 1
+    last_k_rewards = [curr_reward]
+
     step = 0
     while(True):
-        visualize(step, state)
+        if (not step % k):
+            visualize(step, state, np.mean(last_k_rewards[-k:]))
         if step >= num_decisions:
             break
+        step += 1
         delta_state = decide(state)
         state = change(state, delta_state)
-        step += 1
+        curr_reward = reward(state)
+        last_k_rewards.insert(step, curr_reward)
 
 # given starting state, return delta state as decision
 def decide(state):
@@ -188,10 +229,6 @@ def change(state, delta_state):
     #print('State: ', state)
     #print('Delta State: ', delta_state)
     return [state[i] + delta_state[i] for i in range(len(state))]
-
-# visualize the step count and the state
-def visualize(step, state):
-    print('Step: ' + str(step) + ' State: ' + str(state))
 
 # given two states, return their distance
 def distance(state1, state2):
