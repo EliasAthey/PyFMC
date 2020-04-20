@@ -3,7 +3,7 @@ import random
 import scipy.spatial
 
 NUM_DECISIONS = 100000
-NUM_WALKERS = 2
+NUM_WALKERS = 5
 TIME_HORIZON = 100
 R_POW = 1
 
