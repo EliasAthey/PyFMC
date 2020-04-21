@@ -1,18 +1,21 @@
 import numpy as np
 import random
 import scipy.spatial
+from PIL import Image
+import time
+import matplotlib.pyplot as plt
 
 # number of total decisions to make (length of run)
 NUM_DECISIONS = 100000
 
 # number of walkers to use (how many threads of thinking)
-NUM_WALKERS = 10
+NUM_WALKERS = 1
 
 # number of virtual actions each walker takes during a single decision
-TIME_HORIZON = 100
+TIME_HORIZON = 1
 
 # explore/exploit balance  - 0: explore 1: balanced 2: exploit
-R_POW = 1
+R_POW = 0
 
 # evolve walkers given their states, return delta_states for all walkers
 # delta_state constraints are applied here
@@ -20,49 +23,79 @@ def evolve(wStates):
 
     # discrete evolution options (discrete actions)
     # this shows only the first variable able to adjust by one positive or negative, second variable always increases by 1
-    num_actions = 2
+   # num_actions = 2
     delta_states = []
-    for idx, state in enumerate(wStates):
-        r = random.randint(0, num_actions)
-        if r == 0:
-            delta_states.insert(idx, [0, 1])
-        elif r == 1:
-            delta_states.insert(idx, [10, 1])
-        elif r == 2:
-            delta_states.insert(idx, [-10, 1])
-        else:
-            delta_states.insert(idx, [0, 1])
+   # for idx, state in enumerate(wStates):
+   #     r = random.randint(0, num_actions)
+   #     if r == 0:
+   #         delta_states.insert(idx, [0, 1])
+   #     elif r == 1:
+   #         delta_states.insert(idx, [10, 1])
+   #     elif r == 2:
+   #         delta_states.insert(idx, [-10, 1])
+   #     else:
+   #         delta_states.insert(idx, [0, 1])
 
     #print('Delta: ', delta_states)
-    return delta_states
+   # return delta_states
 
     # continuous evolution options, constrained by continuous functions
     # this shows
-    evo_scale = 100
-    #for idx, state in enumerate(wStates):
+    global num_state_values
+    evo_scale = 1
+    for idx, state in enumerate(wStates):
+        d = [(random.random() * evo_scale * 2) - evo_scale for i in range(num_state_values)]
+        delta_states.insert(idx, [d])
+    return delta_states
 
 
 
 # given a state, return the reward
 def reward(state):
-    if (state[0] == state[1]):
-        return state[0]
-    elif (state[0] < state[1]):
-        return (state[0] - state[1])
-    else:
-        return (state[1] - state[0])
+    global num_state_values
+    return 0#np.sum(state)
 
 # visualize the step count and the state
-def visualize(step, state, reward):
-    print('Step: ' + str(step) + ' State: ' + str(state) + ' Mean Reward: ' + str(reward))
+def visualize(step, state, state_shape, reward):
+    global fig
+    global ax
+    #print('Step: ' + str(step) + ' State: ' + str(state) + ' Mean Reward: ' + str(reward))
+    print('Step: ' + str(step) + ' Mean Reward: ' + str(reward))
+    reform_img = np.asarray(state).reshape(state_shape)
+    img = Image.fromarray(reform_img, 'RGBA')
+    plt.imshow(img)
+
+    #img.save('curr_state.png')
+    #plot_img = plt.imread('curr_state.png')
+    #ax.imshow(plot_img)
+
+    #plot_img = plt.imread(img)
+    #ax.imshow(plot_img)
+
+    #img.show()
+
 
 def start():
     # state space
     state = []
 
     # starting state
-    state.insert(0, 0)
-    state.insert(1, 0)
+    global num_state_values
+
+    global fig
+    global ax
+    fig, ax = plt.subplots()
+    #num_state_values = random.randint(0, 10)
+    #for x in range(num_state_values):
+    #    state.insert(x, random.randint(0, num_state_values))
+
+    # import image as state
+    img = Image.open('test.png').convert('RGBA')
+    img_arr = np.array(img)
+    img_shape = img_arr.shape
+    state = img_arr.ravel()
+    num_state_values = len(state)
+
 
     # max number of decisions to make
     num_decisions = NUM_DECISIONS
@@ -75,7 +108,7 @@ def start():
     step = 0
     while(True):
         if (not step % k):
-            visualize(step, state, np.mean(last_k_rewards[-k:]))
+            visualize(step, state, img_shape, np.mean(last_k_rewards[-k:]))
         if step >= num_decisions:
             break
         step += 1
@@ -160,6 +193,7 @@ def make_decision(deltas):
 
 # given a list of states, return rewards for those states
 def get_rewards(states):
+    #print('States: ' + str([s for s in states]))
     return relativize([reward(s) for s in states])
 
 # given a list of states, return FMC distances for those states
@@ -177,6 +211,7 @@ def get_distances(states):
 
 # given a list of numbers, relativize them by normalizing to N(0,1) and then scaling
 def relativize(numbers):
+    #print('Relativizing Numbers: ' + str(numbers))
     mean = np.mean(numbers)
     stdev = np.std(numbers)
     for i in range(len(numbers)):
@@ -228,7 +263,8 @@ def change(state, delta_state):
     #print('Change')
     #print('State: ', state)
     #print('Delta State: ', delta_state)
-    return [state[i] + delta_state[i] for i in range(len(state))]
+    return np.add(state, delta_state)
+    #return [state[i] + delta_state[i] for i in range(len(state))]
 
 # given two states, return their distance
 def distance(state1, state2):
